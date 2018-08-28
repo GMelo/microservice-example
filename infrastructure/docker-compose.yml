@@ -1,0 +1,154 @@
+version: '3'
+
+services:
+  mongo:
+    image: mongo:latest
+    hostname: mongo
+    labels:
+      NAME: "mongo"
+    ports:
+      - "27017:27017"
+    restart: always
+    volumes:
+      - data-mongodb:/data/db:rw
+
+  apache:
+    image: httpd:latest
+    hostname: apache
+    labels:
+      NAME: "apache"
+    ports:
+      - "8080:80"
+    restart: always
+    volumes:
+      - ../front-end:/usr/local/apache2/htdocs/:rw
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    labels:
+      NAME: "rabbitmq"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "SIESUSHAIYOHM2PHAHMAE"
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+      RABBITMQ_DEFAULT_VHOST: "/"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+      - "5671:5671"
+    restart: always
+    volumes:
+      - ./enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - data-rabbitmq:/var/lib/rabbitmq:rw
+  h2:
+    image: oscarfonts/h2
+    hostname: h2
+    labels:
+      NAME: "h2"
+    restart: always
+    ports:
+      - "81:81"
+      - "1521:1521"
+    volumes:
+      - new-data-h2:/opt/h2-data:rw
+
+  transaction-receiver:
+    image: gmelo/transaction-receiver
+    hostname: transaction-receiver
+    labels:
+      NAME: "transaction-receiver"
+    environment:
+      JAVA_OPTS: "-Dspring.rabbitmq.host=rabbitmq \
+                  -Dspring.application.name=transaction-receiver"
+    ports:
+      - "8082:8082"
+    restart: always
+    links:
+      - rabbitmq
+    volumes:
+     - /octus/logs/hsbc:/var/logs:rw
+
+  transaction-emitter:
+    image: gmelo/transaction-emitter
+    hostname: transaction-emitter
+    labels:
+      NAME: "transaction-emitter"
+    environment:
+      JAVA_OPTS: "-Dorg.gmelo.hsbc.emitter.receiver.endpoint=http://transaction-receiver:8082/receiver/endpoint \
+                  -Dorg.gmelo.hsbc.emitter.interval=1000 \
+                  -Dspring.application.name=transaction-emitter"
+    ports:
+      - "8081:8081"
+    restart: always
+    links:
+      - transaction-receiver
+    volumes:
+      - /octus/logs/hsbc:/var/logs:rw
+
+  transaction-persister:
+    image: gmelo/transaction-persister
+    hostname: transaction-persister
+    labels:
+      NAME: "transaction-persister"
+    environment:
+      JAVA_OPTS: "-Dspring.profiles.active=transaction-persistence \
+                  -Dserver.port=8083 -Dspring.data.mongodb.host=mongo \
+                  -Dspring.rabbitmq.host=rabbitmq
+                  -Dspring.application.name=transaction-persister"
+    ports:
+      - "8083:8083"
+    restart: always
+    links:
+      - mongo
+      - rabbitmq
+    volumes:
+     - /octus/logs/hsbc:/var/logs:rw
+
+  transaction-analytics:
+    image: gmelo/transaction-analytics
+    hostname: transaction-analytics
+    labels:
+      NAME: "transaction-analytics"
+    environment:
+      JAVA_OPTS: "-Xmx2g -Xms2g \
+                  -Dorg.gmelo.hsbc.mongo.url=mongodb://mongo \
+                  -Dspring.rabbitmq.host=rabbitmq -Dlogging.level.org.apache=WARN \
+                  -Dlogging.level.org.spark_project=WARN \
+                  -Dspring.application.name=transaction-analytics"
+    ports:
+      - "8084:8084"
+    restart: always
+    links:
+      - mongo
+      - rabbitmq
+    volumes:
+     - /octus/logs/hsbc:/var/logs:rw
+
+  aggregation-persister:
+    image: gmelo/transaction-persister
+    hostname: aggregation-persister
+    labels:
+      NAME: "aggregation-persister"
+    environment:
+      JAVA_OPTS: "-Dspring.profiles.active=aggregation-persistence -Dserver.port=8085 \
+                  -Dspring.rabbitmq.host=rabbitmq \
+                  -Dspring.datasource.url=jdbc:h2:tcp://h2:1521/hsbc_db \
+                  -Dspring.application.name=aggregation-persister"
+    ports:
+      - "8085:8085"
+    restart: always
+    links:
+      - h2
+      - rabbitmq
+    volumes:
+     - /octus/logs/hsbc:/var/logs:rw
+
+volumes:
+  data-mongodb:
+  data-rabbitmq:
+  new-data-h2:
+#
+##docker run -d -p 1521:1521 -p 81:81 -v ~/data:/opt/h2-data --name=MyH2Instance oscarfonts/h2
+##docker run --name some-mongo -p 27017:27017 -d mongo:latest
+##docker run -d --hostname my-rabbit -p 15672:15672 -p 5672:5672 --name some-rabbit rabbitmq:3-management

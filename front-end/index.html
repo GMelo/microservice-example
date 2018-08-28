@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="./hsbc-assigment.css">
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"></script>
+    <!-- Axios and vue -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- Add this after vue.js -->
+    <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
+    <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+    <!--defer tag to ensure script is executed after rendering-->
+    <script src="./hsbc-assignment.js" defer></script>
+
+</head>
+<body>
+<div id="app">
+    <div class="container top-buffer ">
+        <div class="top-buffer ">
+            <h1>HSBC Assignment</h1>
+        </div>
+
+
+        <!--start of tablist-->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="driver-tab" data-toggle="tab" href="#driver" role="tab"
+                   aria-controls="driver" aria-selected="true">Driver</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="analytics-tab" data-toggle="tab" href="#analytics" role="tab"
+                   aria-controls="analytics" aria-selected="false">Analytics</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="persistence-tab" data-toggle="tab" href="#persistence" role="tab"
+                   aria-controls="persistence" aria-selected="false">Persistence</a>
+            </li>
+        </ul>
+        <!-- end of tablist-->
+
+        <!-- start of tab panel -->
+        <div class="tab-content" id="driver-tab-content">
+
+            <!--tab 1 - Driver tab-->
+            <div class="tab-pane fade show active" id="driver" role="tabpanel" aria-labelledby="driver-tab">
+
+                <div class="form-group row">
+                    <div class="form-group lateral-buffer">
+                        <a class="btn btn-outline-secondary" v-on:click="controlEmitter('start')"
+                           role="button">Start-Emitter</a>
+                    </div>
+                    <div class="form-group lateral-buffer">
+                        <a class="btn btn-outline-secondary" v-on:click="controlEmitter('stop')"
+                           role="button">Stop-Emitter</a>
+                    </div>
+                    <div class="form-group lateral-buffer">
+
+                    </div>
+                    <!--<div class="form-group lateral-buffer">-->
+                    <!--<a class="btn btn-outline-secondary" v-on:click="controlEmitter('status')"-->
+                    <!--role="button">Emitter-Status</a>-->
+                    <!--</div>-->
+                </div>
+                <!--<div class="lateral-buffer">-->
+                <p> Emitter is: {{emitterStatus}}</p>
+
+                <!--</div>-->
+
+            </div>
+
+            <!-- Tab 2 Analytics tab -->
+            <div class="tab-pane fade" id="analytics" role="tabpanel" aria-labelledby="analytics-tab">
+
+                <div class="form-group row">
+                    <div class="form-group lateral-buffer">
+                        <select class="form-control" v-model="queryType">
+                            <option disabled value="">Query Type</option>
+                            <option value="aggregations">Aggregate Data For</option>
+                            <option value="transactions">All Transactions For</option>
+                            <option value="persistedAgg">All data already Aggregated</option>
+                        </select>
+
+                    </div>
+                    <div class="col-1 form-group lateral-buffer" v-if="queryType != 'persistedAgg'">
+                        <input class="form-control" v-model="interval" placeholder="val" type="number"
+                               maxlength="5">
+                    </div>
+
+                    <div class="form-group lateral-buffer" v-if="queryType !='persistedAgg'">
+                        <select class="form-control" v-model="intervalType">
+                            <option disabled value="">Time Unit</option>
+                            <option>DAYS</option>
+                            <option>HOURS</option>
+                            <option>MINUTES</option>
+                            <option>SECONDS</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group lateral-buffer">
+                        <a class="btn btn-outline-secondary"
+                           v-on:click="performQuery(queryType,intervalType,interval)"
+                           role="button">Execute</a>
+                    </div>
+                </div>
+                <div>
+                    <b-table outlined striped hover :items="returned"></b-table>
+                </div>
+                <b-alert show dismissible variant=danger :show="showDismissibleAlert"
+                         @dismissed="showDismissibleAlert=false">Error !!!
+                </B-alert>
+            </div>
+
+            <!--Tab 3 Persistence tab-->
+            <div class="tab-pane fade" id="persistence" role="tabpanel" aria-labelledby="persistence-tab">
+
+                <div class="form-group row">
+
+                    <div class="form-group lateral-buffer">
+                        <select class="form-control" v-model="intervalType">
+                            <option disabled value="">Please select one</option>
+                            <option>DAYS</option>
+                            <option>HOURS</option>
+                            <option>MINUTES</option>
+                            <option>SECONDS</option>
+                        </select>
+                    </div>
+
+                    <div class="col-1 form-group lateral-buffer">
+                        <input class="form-control" v-model="interval" placeholder="val" type="number"
+                               maxlength="5">
+                    </div>
+                    <div class="form-group lateral-buffer">
+                        <a class="btn btn-outline-secondary"
+                           v-on:click="performQuery('persistence',intervalType,interval)"
+                           role="button">Execute</a>
+                    </div>
+                    <b-alert show dismissible variant=danger :show="showDismissibleAlert"
+                             @dismissed="showDismissibleAlert=false">Error !!!
+                    </B-alert>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
