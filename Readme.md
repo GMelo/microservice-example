@@ -1,4 +1,4 @@
-# HSBC assignment solution #
+# assignment solution #
 
 The proposed solution was implemented keeping in mind the parameters provided in the challenge, but also the required skills in the jobspeck.
 The solution It works consuming generated transactions, and making them available to be aggregated and stored for a set time interval.
